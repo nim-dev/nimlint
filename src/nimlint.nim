@@ -31,7 +31,7 @@ type
 # assert in a test file => doAssert
 # isMainModule in stdlib => recommend moving to tests/stdlib/tfoo.nim
 # double backticks => single backticks
-# capitalize the fist letter
+# capitalize the first letter
 # lots of testament specific checks (eg exitcode: 0 usually useless)
 
 proc initHintState(kind: HintStateKind, file: string, line, col: int): HintState =
