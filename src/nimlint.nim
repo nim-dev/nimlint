@@ -2,7 +2,7 @@
 TODO: not portable, needs instead: `requires "compiler"`
 ]#
 import ../compiler/[ast, idents, msgs, syntaxes, options, pathutils]
-# from ../compiler/astalgo import debug
+from ../compiler/astalgo import debug
 from ../compiler/renderer import renderTree
 
 import std/[os, strformat, strutils]
@@ -33,6 +33,7 @@ const
 
       "proc + noSideEffect => func",
       "isMainModule in stdlib => moving to tests/*/*.nim",
+
       "exitcode: 0 is usually useless",
       "assert => doAssert"
       ]
@@ -64,9 +65,6 @@ proc cleanWhenModule(hintTable: var seq[HintState], conf: ConfigRef, n: PNode) =
       hintTable.add(hintIsMainModule, conf, n)
 
 proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
-  if n.comment.len != 0:
-    var line = n.info.line
-    var start = 0
   case n.kind
   of nkImportStmt, nkExportStmt, nkCharLit..nkUInt64Lit,
       nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit:
@@ -97,12 +95,10 @@ proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
     clean(conf, n[bodyPos], hintTable)
   of nkFuncDef:
     discard
-    # debug n
-    # echo n.renderTree
   of nkIdent:
-    # debug n
-    # echo n.renderTree
     discard
+  of nkCommentStmt:
+    echo n.comment & "\n"
   else:
     for s in n.sons:
       clean(conf, s, hintTable)
