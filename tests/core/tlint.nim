@@ -2,8 +2,14 @@ import std/[os]
 import lint
 
 import lintpkg/submodule
-doAssert getWelcomeMessage() == "Hello, World!" # palceholder
 
-const fileInput = currentSourcePath.parentDir / "example.nim"
-const fileOutput = currentSourcePath.parentDir.parentDir.parentDir / "build/example.nim"
-main(fileInput, fileOutput)
+proc main =
+  doAssert getWelcomeMessage() == "Hello, World!" # palceholder
+
+  const fileInput = currentSourcePath.parentDir / "example.nim"
+  const buildDir = currentSourcePath.parentDir.parentDir.parentDir / "build"
+  createDir buildDir
+  const fileOutput = buildDir / fileInput.lastPathPart
+  main(fileInput, fileOutput)
+
+main()
