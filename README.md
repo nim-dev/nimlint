@@ -16,7 +16,3 @@ Ref RFC https://github.com/timotheecour/Nim/issues/415
 ## TODO
 
 - [ ] Better messages with filename, line and col number
-
-## Usage
-
-Type `nim c -r lint.nim`.

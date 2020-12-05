@@ -7,13 +7,17 @@ license       = "MIT"
 srcDir        = "src"
 installExt    = @["nim"]
 binDir           = "bin"
-bin           = @["lint"]
+bin           = @["nimlint"]
 
 
 # Dependencies
 
 requires "nim >= 1.5.1"
 requires "cligen >= 1.3.2"
+
+
+task tests, "Test all":
+  exec "testament all"
 
 # TODO
 # requires "compiler"
