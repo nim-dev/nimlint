@@ -26,13 +26,18 @@ type
     kind: HintStateKind
     info: tuple[file: string, line, col: int]
 
-# code block => runnableExamples
-# proc + noSideEffect => func
-# assert in a test file => doAssert
-# isMainModule in stdlib => recommend moving to tests/stdlib/tfoo.nim
-# double backticks => single backticks
-# capitalize the first letter
-# lots of testament specific checks (eg exitcode: 0 usually useless)
+const
+  hintStateKindTable: array[7, string] = ["double backticks => single backtick",
+      "code blocks => runnableExamples",
+      "capitalize the first letter",
+
+      "proc + noSideEffect => func",
+      "isMainModule in stdlib => moving to tests/*/*.nim",
+      "exitcode: 0 is usually useless",
+      "assert => doAssert"
+      ]
+
+assert hintStateKindTable.high == HintStateKind.high.ord
 
 proc initHintState(kind: HintStateKind, file: string, line, col: int): HintState =
   HintState(kind: kind, info: (file, line, col))
@@ -52,13 +57,13 @@ const
   SpecialChars = {'\r', '\n', '`'}
   testsPath = "tests"
 
-proc cleanWhenModule(hintsTable: var seq[HintState], conf: ConfigRef, n: PNode) =
+proc cleanWhenModule(hintTable: var seq[HintState], conf: ConfigRef, n: PNode) =
   if n.len > 0 and n[0].kind == nkElifBranch:
     let son = n[0]
     if son[0].kind == nkIdent and cmpIgnoreStyle(son[0].ident.s, "isMainModule") == 0:
-      hintsTable.add(hintIsMainModule, conf, n)
+      hintTable.add(hintIsMainModule, conf, n)
 
-proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
+proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
   if n.comment.len != 0:
     var line = n.info.line
     var start = 0
@@ -81,15 +86,15 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
     #     }, {
     #       "kind": "nkStmtList",
     #       "typ": "nil"
-    cleanWhenModule(hintsTable, conf, n)
+    cleanWhenModule(hintTable, conf, n)
   of nkSym:
     discard
   of nkProcDef:
     for son in n[pragmasPos]:
       if cmpIgnoreStyle(son.ident.s, "noSideEffect") == 0:
-        hintsTable.add(hintFunc, conf, n)
+        hintTable.add(hintFunc, conf, n)
         break
-    clean(conf, n[bodyPos], hintsTable)
+    clean(conf, n[bodyPos], hintTable)
   of nkFuncDef:
     discard
     # debug n
@@ -100,9 +105,9 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
     discard
   else:
     for s in n.sons:
-      clean(conf, s, hintsTable)
+      clean(conf, s, hintTable)
 
-proc prettyPrint*(infile, outfile: string, hintsTable: var seq[HintState]) =
+proc prettyPrint*(infile, outfile: string, hintTable: var seq[HintState]) =
   # TODO: is outfile written to?
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
@@ -114,15 +119,21 @@ proc prettyPrint*(infile, outfile: string, hintsTable: var seq[HintState]) =
 
   if setupParser(parser, fileIdx, cache, conf):
     var ast = parseFile(conf.projectMainIdx, cache, conf)
-    clean(conf, ast, hintsTable)
+    clean(conf, ast, hintTable)
     closeParser(parser)
 
-proc `$`(a: HintState): string =
+proc toString(a: HintState, verbose: bool): string =
   result = fmt"[lint] {a.kind}: "
   let loc = a.info
   result.toLocation(loc.file, loc.line, loc.col)
 
-proc main*(fileInput, fileOutput: string) =
+  if verbose:
+    result.add "\n" & hintStateKindTable[a.kind.ord] & "\n"
+
+proc `$`(a: HintState): string =
+  toString(a, false)
+
+proc main*(fileInput, fileOutput: string, verbose = true) =
   # var infiles = newSeq[string]()
   # var outfiles = newSeq[string]()
 
@@ -132,15 +143,15 @@ proc main*(fileInput, fileOutput: string) =
     # if input is not actually over-written, when nimpretty is a noop).
     # --backup was un-documented (rely on git instead).
 
-  var hintsTable: seq[HintState]
-  prettyPrint(fileInput, fileOutput, hintsTable)
+  var hintTable: seq[HintState]
+  prettyPrint(fileInput, fileOutput, hintTable)
 
-  for item in hintsTable:
+  for item in hintTable:
     case item.kind
     of HintStateKind.hintIsMainModule:
-      echo item
+      echo item.tostring(verbose)
     else:
-      echo item
+      echo item.tostring(verbose)
 
 when isMainModule:
   import cligen
