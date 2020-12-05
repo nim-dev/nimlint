@@ -15,9 +15,12 @@ type
 
   HintStateKind* = enum
     # doc comments
-    hintBackticks, hintCodeBlocks, hintCapitialize
+    hintBackticks
+    hintCodeBlocks
+    hintCapitialize
     # functions
-    hintFunc, hintIsMainModule
+    hintFunc
+    hintIsMainModule
     # testament
     hintExitcode
     hintAssert
