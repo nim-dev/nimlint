@@ -1,8 +1,11 @@
 bin/*
 build/*
-*exe
+
 nimcache
+# would be nice to make sure those are generated in build/ or bin/ (or nimcache automatically with `nim r `)
+# which makes it easier to gitignore or move in bulk
 outputGotten.txt
 outputExpected.txt
 megatest.nim
 core.json
+*.exe
