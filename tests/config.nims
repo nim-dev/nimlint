@@ -1,2 +1,2 @@
 switch("path", "$projectDir/../src")
-import ../src/lintpkg/nims_common
+import ../src/nimlintpkg/nims_common
