@@ -70,8 +70,10 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
         let info = n.info
         let file = conf.toFullPath(info.fileIndex)
         hintsTable.add initHintState(hintIsMainModule, file, info.line.int, info.col.int)
-  of nkIdent, nkSym:
+  of nkSym:
     discard
+  of nkIdent:
+    if 
   else:
     for s in n.sons:
       clean(conf, s, hintsTable)
