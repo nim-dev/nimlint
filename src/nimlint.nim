@@ -2,22 +2,21 @@
 TODO: not portable, needs instead: `requires "compiler"`
 ]#
 import ../compiler/[ast, idents, msgs, syntaxes, options, pathutils]
-from ../compiler/astalgo import debug
 from ../compiler/renderer import renderTree
 
-import std/[os, parseutils, strformat]
+import std/[os, strformat, strutils]
 import std/private/miscdollars # avoids code duplication
 
-type
-  PrettyOptions* = object
-    indWidth*: Natural
-    maxLineLen*: Positive
 
+type
   HintStateKind* = enum
     # doc comments
-    hintBackticks, hintCodeBlocks, hintCapitialize
+    hintBackticks
+    hintCodeBlocks
+    hintCapitialize
     # functions
-    hintFunc, hintIsMainModule
+    hintFunc
+    hintIsMainModule
     # testament
     hintExitcode
     hintAssert
@@ -26,25 +25,51 @@ type
     kind: HintStateKind
     info: tuple[file: string, line, col: int]
 
-# code block => runnableExamples
-# proc + noSideEffect => func
-# assert in a test file => doAssert
-# isMainModule in stdlib => recommend moving to tests/stdlib/tfoo.nim
-# double backticks => single backticks
-# capitalize the first letter
-# lots of testament specific checks (eg exitcode: 0 usually useless)
+const
+  hintStateKindTable: array[7, string] = ["double backticks => single backtick",
+      "code blocks => runnableExamples",
+      "capitalize the first letter",
+
+      "proc + noSideEffect => func",
+      "isMainModule in stdlib => moving to tests/*/*.nim",
+
+      "exitcode: 0 is usually useless",
+      "assert => doAssert"
+      ]
+
+assert hintStateKindTable.high == HintStateKind.high.ord
 
 proc initHintState(kind: HintStateKind, file: string, line, col: int): HintState =
   HintState(kind: kind, info: (file, line, col))
+
+template add(
+  tabs: var seq[HintState], kind: HintStateKind,
+  conf: ConfigRef, file: string, line, col: int
+) =
+  tabs.add initHintState(kind, file, line, col)
+
+proc add(tabs: var seq[HintState], kind: HintStateKind, conf: ConfigRef, n: PNode) =
+  let info = n.info
+  let file = conf.toFullPath(info.fileIndex)
+  tabs.add(kind, conf, file, info.line.int, info.col.int)
 
 const
   SpecialChars = {'\r', '\n', '`'}
   testsPath = "tests"
 
-proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
-  if n.comment.len != 0:
-    var line = n.info.line
-    var start = 0
+proc cleanWhenModule(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
+  if n.len > 0 and n[0].kind == nkElifBranch:
+    let son = n[0]
+    if son[0].kind == nkIdent and cmpIgnoreStyle(son[0].ident.s, "isMainModule") == 0:
+      hintTable.add(hintIsMainModule, conf, n)
+
+proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
+  discard SpecialChars
+
+proc cleanTest(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
+  discard testsPath
+
+proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
   case n.kind
   of nkImportStmt, nkExportStmt, nkCharLit..nkUInt64Lit,
       nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit:
@@ -64,22 +89,29 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
     #     }, {
     #       "kind": "nkStmtList",
     #       "typ": "nil"
-    if n.len > 0 and n[0].kind == nkElifBranch:
-      let son = n[0]
-      if son[0].kind == nkIdent and son[0].ident.s == "isMainModule":
-        let info = n.info
-        let file = conf.toFullPath(info.fileIndex)
-        hintsTable.add initHintState(hintIsMainModule, file, info.line.int, info.col.int)
+    cleanWhenModule(conf, n, hintTable)
   of nkSym:
     discard
-  of nkIdent:
+  of nkProcDef:
+    for son in n[pragmasPos]:
+      if cmpIgnoreStyle(son.ident.s, "noSideEffect") == 0:
+        hintTable.add(hintFunc, conf, n)
+        break
+    clean(conf, n[bodyPos], hintTable)
+  of nkFuncDef:
     discard
+  of nkIdent:
+    if cmpIgnoreStyle(n.ident.s, "assert") == 0:
+      cleanTest(conf, n, hintTable)
+  of nkCommentStmt:
+    cleanComment(conf, n, hintTable)
   else:
     for s in n.sons:
-      clean(conf, s, hintsTable)
+      clean(conf, s, hintTable)
 
-proc prettyPrint*(infile, outfile: string, hintsTable: var seq[HintState]) =
+proc prettyPrint*(infile, outfile: string, hintTable: var seq[HintState]) =
   # TODO: is outfile written to?
+  # outfile needs nimpretty
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   let f = splitFile(outfile.expandTilde)
@@ -90,33 +122,29 @@ proc prettyPrint*(infile, outfile: string, hintsTable: var seq[HintState]) =
 
   if setupParser(parser, fileIdx, cache, conf):
     var ast = parseFile(conf.projectMainIdx, cache, conf)
-    clean(conf, ast, hintsTable)
-    closeParser(parser)
+    clean(conf, ast, hintTable)
 
-proc `$`(a: HintState): string =
+proc toString(a: HintState, verbose: bool): string =
   result = fmt"[lint] {a.kind}: "
   let loc = a.info
   result.toLocation(loc.file, loc.line, loc.col)
 
-proc main*(fileInput, fileOutput: string) =
-  # var infiles = newSeq[string]()
-  # var outfiles = newSeq[string]()
+  if verbose:
+    result.add "\n" & hintStateKindTable[a.kind.ord] & "\n"
 
-  # var backup = false
-    # when `on`, create a backup file of input in case
-    # `prettyPrint` could over-write it (note that the backup may happen even
-    # if input is not actually over-written, when nimpretty is a noop).
-    # --backup was un-documented (rely on git instead).
+proc `$`*(a: HintState): string =
+  toString(a, false)
 
-  var hintsTable: seq[HintState]
-  prettyPrint(fileInput, fileOutput, hintsTable)
+proc main*(fileInput, fileOutput: string, verbose = true) =
+  var hintTable: seq[HintState]
+  prettyPrint(fileInput, fileOutput, hintTable)
 
-  for item in hintsTable:
+  for item in hintTable:
     case item.kind
     of HintStateKind.hintIsMainModule:
-      echo item
+      echo item.tostring(verbose)
     else:
-      discard
+      echo item.tostring(verbose)
 
 when isMainModule:
   import cligen
