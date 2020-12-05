@@ -120,7 +120,7 @@ proc prettyPrint*(infile, outfile: string, hintTable: var seq[HintState]) =
   if setupParser(parser, fileIdx, cache, conf):
     var ast = parseFile(conf.projectMainIdx, cache, conf)
     clean(conf, ast, hintTable)
-    closeParser(parser)
+    # closeParser(parser)
 
 proc toString(a: HintState, verbose: bool): string =
   result = fmt"[lint] {a.kind}: "
