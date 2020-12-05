@@ -15,9 +15,9 @@ jobs:
         nim-version:
           # - stable
           - devel
-        exclude:
-          - os: macos-latest
-            nim-version: devel
+        # exclude:
+        #   - os: macos-latest
+        #     nim-version: devel
     steps:
     - name: Checkout
       uses: actions/checkout@v2
