@@ -118,5 +118,4 @@ proc main*(fileInput, fileOutput: string) =
 
 when isMainModule:
   import cligen
-  # var x = 13 # TODO: why?
   dispatch main
