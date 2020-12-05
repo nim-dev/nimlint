@@ -1,7 +1,11 @@
+#[
+TODO: not portable, needs instead: `requires "compiler"`
+]#
 import ../compiler/[ast, idents, msgs, syntaxes, options, pathutils]
-import std/[os, parseutils]
 from ../compiler/astalgo import debug
 from ../compiler/renderer import renderTree
+
+import std/[os, parseutils]
 
 type
   PrettyOptions* = object
@@ -70,6 +74,7 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
       clean(conf, s, hintsTable)
 
 proc prettyPrint*(infile, outfile: string, hintsTable: var seq[HintState]) =
+  # TODO: is outfile written to?
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   let f = splitFile(outfile.expandTilde)
@@ -84,8 +89,6 @@ proc prettyPrint*(infile, outfile: string, hintsTable: var seq[HintState]) =
     closeParser(parser)
 
 proc main*(fileInput, fileOutput: string) =
-  # var outfile, outdir: string
-
   # var infiles = newSeq[string]()
   # var outfiles = newSeq[string]()
 
@@ -106,5 +109,6 @@ proc main*(fileInput, fileOutput: string) =
       discard
 
 when isMainModule:
-  var x = 13
-  main("example.nim", "out.nim")
+  import cligen
+  # var x = 13 # TODO: why?
+  dispatch main
