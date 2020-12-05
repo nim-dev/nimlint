@@ -69,7 +69,7 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
       if son[0].kind == nkIdent and son[0].ident.s == "isMainModule":
         let info = n.info
         let file = conf.toFullPath(info.fileIndex)
-        hintsTable.add initHintState(hintIsMainModule, file, n.info.line.int, n.info.col.int)
+        hintsTable.add initHintState(hintIsMainModule, file, info.line.int, info.col.int)
   of nkIdent, nkSym:
     discard
   else:
