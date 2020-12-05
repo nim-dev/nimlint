@@ -17,8 +17,8 @@ requires "cligen >= 1.3.2"
 
 
 task tests, "Test all":
-  # if this fails, use: `nim r tests/core/tnimlint.nim`
-  exec "testament all"
+  # exec "testament all"
+  nim r tests/core/tnimlint.nim
 
 # TODO
 # requires "compiler"
