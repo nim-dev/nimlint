@@ -16,7 +16,6 @@ requires "nim >= 1.5.1"
 requires "cligen >= 1.3.2"
 
 task tests, "Test all":
-  # if this fails, use: `nim r tests/core/tnimlint.nim`
   # TODO: use getAppFileName() or getCurrentCompilerExe() to forward nim
   # exec "testament all"
   exec "nim r tests/core/tnimlint.nim"
