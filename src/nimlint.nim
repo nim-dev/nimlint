@@ -73,7 +73,7 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
   of nkSym:
     discard
   of nkIdent:
-    if 
+    discard
   else:
     for s in n.sons:
       clean(conf, s, hintsTable)
