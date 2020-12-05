@@ -1,3 +1,8 @@
 bin/*
 build/*
 *exe
+nimcache
+outputGotten.txt
+outputExpected.txt
+megatest.nim
+core.json

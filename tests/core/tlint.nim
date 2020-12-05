@@ -1,11 +1,7 @@
 import std/[os]
-import lint
-
-import lintpkg/submodule
+import ../../src/nimlint
 
 proc main =
-  doAssert getWelcomeMessage() == "Hello, World!" # palceholder
-
   const fileInput = currentSourcePath.parentDir / "example.nim"
   const buildDir = currentSourcePath.parentDir.parentDir.parentDir / "build"
   createDir buildDir
