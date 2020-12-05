@@ -1,11 +1,11 @@
 # lint
-nim-lint for developing, work in progress
+nimlint make developing softer.
 
-Ref RFC https://github.com/timotheecour/Nim/issues/415
+Ref https://github.com/timotheecour/Nim/issues/415
 
 ## lint items
 - [ ] code block => runnableExamples
-- [ ] proc + noSideEffect => func
+- [x] proc + noSideEffect => func
 - [ ] assert in a test file => doAssert
 - [x] isMainModule in stdlib => recommend moving to tests/stdlib/tfoo.nim
 - [ ] double backticks => single backticks
@@ -15,4 +15,5 @@ Ref RFC https://github.com/timotheecour/Nim/issues/415
 
 ## TODO
 
-- [ ] Better messages with filename, line and col number
+- [x] Better messages with filename, line and col number
+- [ ] Fix them
