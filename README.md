@@ -1,5 +1,5 @@
 # lint
-nimlint make developing softer.
+nimlint makes developing softer.
 
 Ref https://github.com/timotheecour/Nim/issues/415
 
