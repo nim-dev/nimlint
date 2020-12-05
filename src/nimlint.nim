@@ -123,7 +123,6 @@ proc prettyPrint*(infile, outfile: string, hintTable: var seq[HintState]) =
   if setupParser(parser, fileIdx, cache, conf):
     var ast = parseFile(conf.projectMainIdx, cache, conf)
     clean(conf, ast, hintTable)
-    # closeParser(parser)
 
 proc toString(a: HintState, verbose: bool): string =
   result = fmt"[lint] {a.kind}: "
@@ -137,15 +136,6 @@ proc `$`*(a: HintState): string =
   toString(a, false)
 
 proc main*(fileInput, fileOutput: string, verbose = true) =
-  # var infiles = newSeq[string]()
-  # var outfiles = newSeq[string]()
-
-  # var backup = false
-    # when `on`, create a backup file of input in case
-    # `prettyPrint` could over-write it (note that the backup may happen even
-    # if input is not actually over-written, when nimpretty is a noop).
-    # --backup was un-documented (rely on git instead).
-
   var hintTable: seq[HintState]
   prettyPrint(fileInput, fileOutput, hintTable)
 
