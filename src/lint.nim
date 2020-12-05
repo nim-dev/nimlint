@@ -1,7 +1,12 @@
+#[
+TODO: not portable, needs instead: `requires "compiler"`
+]#
 import ../compiler/[ast, idents, msgs, syntaxes, options, pathutils]
-import std/[os, parseutils]
 from ../compiler/astalgo import debug
 from ../compiler/renderer import renderTree
+
+import std/[os, parseutils, strformat]
+import std/private/miscdollars # avoids code duplication
 
 type
   PrettyOptions* = object
@@ -19,7 +24,7 @@ type
 
   HintState* = object
     kind: HintStateKind
-    info: tuple[row, col: int]
+    info: tuple[file: string, line, col: int]
 
 # code block => runnableExamples
 # proc + noSideEffect => func
@@ -29,8 +34,8 @@ type
 # capitalize the fist letter
 # lots of testament specific checks (eg exitcode: 0 usually useless)
 
-proc initHintState(kind: HintStateKind, row, col: int): HintState =
-  HintState(kind: kind, info: (row, col))
+proc initHintState(kind: HintStateKind, file: string, line, col: int): HintState =
+  HintState(kind: kind, info: (file, line, col))
 
 const
   SpecialChars = {'\r', '\n', '`'}
@@ -62,7 +67,9 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
     if n.len > 0 and n[0].kind == nkElifBranch:
       let son = n[0]
       if son[0].kind == nkIdent and son[0].ident.s == "isMainModule":
-        hintsTable.add initHintState(hintIsMainModule, n.info.line.int, n.info.col.int)
+        let info = n.info
+        let file = conf.toFullPath(info.fileIndex)
+        hintsTable.add initHintState(hintIsMainModule, file, info.line.int, info.col.int)
   of nkIdent, nkSym:
     discard
   else:
@@ -70,6 +77,7 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
       clean(conf, s, hintsTable)
 
 proc prettyPrint*(infile, outfile: string, hintsTable: var seq[HintState]) =
+  # TODO: is outfile written to?
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   let f = splitFile(outfile.expandTilde)
@@ -83,9 +91,12 @@ proc prettyPrint*(infile, outfile: string, hintsTable: var seq[HintState]) =
     clean(conf, ast, hintsTable)
     closeParser(parser)
 
-proc main*(fileInput, fileOutput: string) =
-  # var outfile, outdir: string
+proc `$`(a: HintState): string =
+  result = fmt"[lint] {a.kind}: "
+  let loc = a.info
+  result.toLocation(loc.file, loc.line, loc.col)
 
+proc main*(fileInput, fileOutput: string) =
   # var infiles = newSeq[string]()
   # var outfiles = newSeq[string]()
 
@@ -106,5 +117,5 @@ proc main*(fileInput, fileOutput: string) =
       discard
 
 when isMainModule:
-  var x = 13
-  main("example.nim", "out.nim")
+  import cligen
+  dispatch main
