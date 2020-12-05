@@ -2,7 +2,6 @@
 TODO: not portable, needs instead: `requires "compiler"`
 ]#
 import ../compiler/[ast, idents, msgs, syntaxes, options, pathutils]
-from ../compiler/astalgo import debug
 from ../compiler/renderer import renderTree
 
 import std/[os, strformat, strutils]
@@ -58,11 +57,17 @@ const
   SpecialChars = {'\r', '\n', '`'}
   testsPath = "tests"
 
-proc cleanWhenModule(hintTable: var seq[HintState], conf: ConfigRef, n: PNode) =
+proc cleanWhenModule(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
   if n.len > 0 and n[0].kind == nkElifBranch:
     let son = n[0]
     if son[0].kind == nkIdent and cmpIgnoreStyle(son[0].ident.s, "isMainModule") == 0:
       hintTable.add(hintIsMainModule, conf, n)
+
+proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
+  discard SpecialChars
+
+proc cleanTest(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
+  discard testsPath
 
 proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
   case n.kind
@@ -84,7 +89,7 @@ proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
     #     }, {
     #       "kind": "nkStmtList",
     #       "typ": "nil"
-    cleanWhenModule(hintTable, conf, n)
+    cleanWhenModule(conf, n, hintTable)
   of nkSym:
     discard
   of nkProcDef:
@@ -96,15 +101,17 @@ proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
   of nkFuncDef:
     discard
   of nkIdent:
-    discard
+    if cmpIgnoreStyle(n.ident.s, "assert") == 0:
+      cleanTest(conf, n, hintTable)
   of nkCommentStmt:
-    echo n.comment & "\n"
+    cleanComment(conf, n, hintTable)
   else:
     for s in n.sons:
       clean(conf, s, hintTable)
 
 proc prettyPrint*(infile, outfile: string, hintTable: var seq[HintState]) =
   # TODO: is outfile written to?
+  # outfile needs nimpretty
   var conf = newConfigRef()
   let fileIdx = fileInfoIdx(conf, AbsoluteFile infile)
   let f = splitFile(outfile.expandTilde)
@@ -126,7 +133,7 @@ proc toString(a: HintState, verbose: bool): string =
   if verbose:
     result.add "\n" & hintStateKindTable[a.kind.ord] & "\n"
 
-proc `$`(a: HintState): string =
+proc `$`*(a: HintState): string =
   toString(a, false)
 
 proc main*(fileInput, fileOutput: string, verbose = true) =
