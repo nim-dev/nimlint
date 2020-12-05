@@ -2,17 +2,14 @@
 TODO: not portable, needs instead: `requires "compiler"`
 ]#
 import ../compiler/[ast, idents, msgs, syntaxes, options, pathutils]
-from ../compiler/astalgo import debug
+# from ../compiler/astalgo import debug
 from ../compiler/renderer import renderTree
 
-import std/[os, parseutils, strformat]
+import std/[os, strformat, strutils]
 import std/private/miscdollars # avoids code duplication
 
-type
-  PrettyOptions* = object
-    indWidth*: Natural
-    maxLineLen*: Positive
 
+type
   HintStateKind* = enum
     # doc comments
     hintBackticks
@@ -40,9 +37,26 @@ type
 proc initHintState(kind: HintStateKind, file: string, line, col: int): HintState =
   HintState(kind: kind, info: (file, line, col))
 
+template add(
+  tabs: var seq[HintState], kind: HintStateKind,
+  conf: ConfigRef, file: string, line, col: int
+) =
+  tabs.add initHintState(kind, file, line, col)
+
+proc add(tabs: var seq[HintState], kind: HintStateKind, conf: ConfigRef, n: PNode) =
+  let info = n.info
+  let file = conf.toFullPath(info.fileIndex)
+  tabs.add(kind, conf, file, info.line.int, info.col.int)
+
 const
   SpecialChars = {'\r', '\n', '`'}
   testsPath = "tests"
+
+proc cleanWhenModule(hintsTable: var seq[HintState], conf: ConfigRef, n: PNode) =
+  if n.len > 0 and n[0].kind == nkElifBranch:
+    let son = n[0]
+    if son[0].kind == nkIdent and cmpIgnoreStyle(son[0].ident.s, "isMainModule") == 0:
+      hintsTable.add(hintIsMainModule, conf, n)
 
 proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
   if n.comment.len != 0:
@@ -67,15 +81,22 @@ proc clean(conf: ConfigRef, n: PNode, hintstable: var seq[HintState]) =
     #     }, {
     #       "kind": "nkStmtList",
     #       "typ": "nil"
-    if n.len > 0 and n[0].kind == nkElifBranch:
-      let son = n[0]
-      if son[0].kind == nkIdent and son[0].ident.s == "isMainModule":
-        let info = n.info
-        let file = conf.toFullPath(info.fileIndex)
-        hintsTable.add initHintState(hintIsMainModule, file, info.line.int, info.col.int)
+    cleanWhenModule(hintsTable, conf, n)
   of nkSym:
     discard
+  of nkProcDef:
+    for son in n[pragmasPos]:
+      if cmpIgnoreStyle(son.ident.s, "noSideEffect") == 0:
+        hintsTable.add(hintFunc, conf, n)
+        break
+    clean(conf, n[bodyPos], hintsTable)
+  of nkFuncDef:
+    discard
+    # debug n
+    # echo n.renderTree
   of nkIdent:
+    # debug n
+    # echo n.renderTree
     discard
   else:
     for s in n.sons:
@@ -119,7 +140,7 @@ proc main*(fileInput, fileOutput: string) =
     of HintStateKind.hintIsMainModule:
       echo item
     else:
-      discard
+      echo item
 
 when isMainModule:
   import cligen
