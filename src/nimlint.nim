@@ -34,7 +34,7 @@ const
       "isMainModule in stdlib => moving to tests/*/*.nim",
 
       "exitcode: 0 is usually useless",
-      "assert => doAssert"
+      "assert in tests => doAssert"
       ]
 
 assert hintStateKindTable.high == HintStateKind.high.ord
@@ -66,10 +66,7 @@ proc cleanWhenModule(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
 proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
   discard SpecialChars
 
-proc cleanTest(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
-  discard testsPath
-
-proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
+proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState], infile: string) =
   case n.kind
   of nkImportStmt, nkExportStmt, nkCharLit..nkUInt64Lit,
       nkFloatLit..nkFloat128Lit, nkStrLit..nkTripleStrLit:
@@ -97,17 +94,19 @@ proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
       if cmpIgnoreStyle(son.ident.s, "noSideEffect") == 0:
         hintTable.add(hintFunc, conf, n)
         break
-    clean(conf, n[bodyPos], hintTable)
+    clean(conf, n[bodyPos], hintTable, infile)
   of nkFuncDef:
     discard
   of nkIdent:
-    if cmpIgnoreStyle(n.ident.s, "assert") == 0:
-      cleanTest(conf, n, hintTable)
+    var path = infile.expandFileName
+    if path.find(testsPath) >= 0:
+      if cmpIgnoreStyle(n.ident.s, "assert") == 0:
+        hinttable.add(hintAssert, conf, n)
   of nkCommentStmt:
     cleanComment(conf, n, hintTable)
   else:
     for s in n.sons:
-      clean(conf, s, hintTable)
+      clean(conf, s, hintTable, infile)
 
 proc prettyPrint*(infile, outfile: string, hintTable: var seq[HintState]) =
   # TODO: is outfile written to?
@@ -122,7 +121,7 @@ proc prettyPrint*(infile, outfile: string, hintTable: var seq[HintState]) =
 
   if setupParser(parser, fileIdx, cache, conf):
     var ast = parseFile(conf.projectMainIdx, cache, conf)
-    clean(conf, ast, hintTable)
+    clean(conf, ast, hintTable, infile)
 
 proc toString(a: HintState, verbose: bool): string =
   result = fmt"[lint] {a.kind}: "
@@ -135,9 +134,9 @@ proc toString(a: HintState, verbose: bool): string =
 proc `$`*(a: HintState): string =
   toString(a, false)
 
-proc main*(fileInput, fileOutput: string, verbose = true) =
+proc main*(input, output: string, verbose = true) =
   var hintTable: seq[HintState]
-  prettyPrint(fileInput, fileOutput, hintTable)
+  prettyPrint(input, output, hintTable)
 
   for item in hintTable:
     case item.kind
