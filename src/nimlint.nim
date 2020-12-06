@@ -12,7 +12,6 @@ type
     hintBackticks
     hintCodeBlocks
     hintFirstChar
-    hintLastChar
     # functions
     hintFunc
     hintIsMainModule
@@ -25,10 +24,9 @@ type
     info: tuple[file: string, line, col: int]
 
 const
-  hintStateKindTable: array[8, string] = ["double backticks => single backtick",
+  hintStateKindTable = ["double backticks => single backtick",
       "code blocks => runnableExamples",
       "the first char should be upper",
-      "the last char should not be in alphabet",
 
       "proc + noSideEffect => func",
       "isMainModule in stdlib => moving to tests/*/*.nim",
@@ -84,8 +82,6 @@ proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
 
     if isLowerAscii(comments[0]):
       hintTable.add(hintFirstChar, conf, n)
-    elif isAlphaAscii(comments[^1]):
-      hintTable.add(hintLastChar, conf, n)
 
     while start < comments.len:
       cleanCodeBlocks(comments, start, conf, n, hintTable)

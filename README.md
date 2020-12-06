@@ -11,7 +11,6 @@ Ref https://github.com/timotheecour/Nim/issues/415
 - [x] isMainModule in stdlib => recommend moving to tests/stdlib/tfoo.nim
 - [x] double backticks => single backticks
 - [x] the first char should be upper
-- [x] the last char shouldn be in alphabet
 
 ## TODO
 
