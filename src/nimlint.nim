@@ -129,9 +129,10 @@ proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState], infile: str
     discard
   of nkProcDef:
     for son in n[pragmasPos]:
-      if cmpIgnoreStyle(son.ident.s, "noSideEffect") == 0:
-        hintTable.add(hintFunc, conf, n)
-        break
+      if son.kind == nkIdent:
+        if cmpIgnoreStyle(son.ident.s, "noSideEffect") == 0:
+          hintTable.add(hintFunc, conf, n)
+          break
     clean(conf, n[bodyPos], hintTable, infile)
   of nkFuncDef:
     discard
