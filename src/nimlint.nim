@@ -2,9 +2,7 @@
 TODO: not portable, needs instead: `requires "compiler"`
 ]#
 import ../compiler/[ast, idents, msgs, syntaxes, options, pathutils]
-from ../compiler/renderer import renderTree
-
-import std/[os, strformat, strutils, parseutils]
+import std/[os, strformat, strutils, parseutils, sets]
 import std/private/miscdollars # avoids code duplication
 
 
@@ -29,7 +27,7 @@ type
 const
   hintStateKindTable: array[8, string] = ["double backticks => single backtick",
       "code blocks => runnableExamples",
-      "the first letter should be upper",
+      "the first char should be upper",
       "the last char should not be in alphabet",
 
       "proc + noSideEffect => func",
@@ -77,10 +75,13 @@ proc cleanCodeBlocks(
 
 proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
   let comments = n.comment
-  var start = 0
-  var line = n.info.line.int
+
 
   if comments.len > 0:
+    var start = 0
+    var line = n.info.line.int
+    var ticks = initHashSet[int]()
+
     if isLowerAscii(comments[0]):
       hintTable.add(hintFirstChar, conf, n)
     elif isAlphaAscii(comments[^1]):
@@ -98,11 +99,14 @@ proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
           cleanCodeBlocks(comments, start, conf, n, hintTable)
         of '`':
           if start + 1 < comments.len and comments[start+1] == '`':
-            hintTable.add(hintBackticks, conf, conf.toFullPath(n.info.fileIndex), line, 0)
+            if line notin ticks:
+              hintTable.add(hintBackticks, conf, conf.toFullPath(n.info.fileIndex), line, 0)
+              ticks.incl(line)
             inc start
           inc start
         else:
           inc start
+
 
 proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState], infile: string) =
   case n.kind
@@ -177,11 +181,7 @@ proc main*(input, output: string, verbose = true) =
   prettyPrint(input, output, hintTable)
 
   for item in hintTable:
-    case item.kind
-    of HintStateKind.hintIsMainModule:
-      echo item.tostring(verbose)
-    else:
-      echo item.tostring(verbose)
+    echo toString(item, verbose)
 
 when isMainModule:
   import cligen
