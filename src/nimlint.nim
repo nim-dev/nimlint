@@ -52,7 +52,7 @@ proc add(tabs: var seq[HintState], kind: HintStateKind, conf: ConfigRef, n: PNod
   tabs.add(kind, conf, file, info.line.int, info.col.int)
 
 const
-  SpecialChars = {'\r', '\n', '`'}
+  SpecialChars = {'\n', '`'}
   testsPath = "tests"
 
 proc cleanWhenModule(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
@@ -62,18 +62,18 @@ proc cleanWhenModule(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
       hintTable.add(hintIsMainModule, conf, n)
 
 proc cleanCodeBlocks(
-  comments: string, start: var int, conf: ConfigRef, n: PNode, hintTable: var seq[HintState]
+  comments: string, start: var int, line: int, conf: ConfigRef, n: PNode, hintTable: var seq[HintState]
 ) =
   const cb = ".. code-block::"
   if start + cb.high < comments.len:
-    if comments.startsWith(cb):
-    # if cmpIgnoreStyle(comments.substr(start, cb.high), cb) == 0:
-      hintTable.add(hintCodeBlocks, conf, n)
+    # if comments[].startsWith(cb):
+    if comments.substr(start, start + cb.high) == cb:
+      let file = conf.toFullPath(n.info.fileIndex)
+      hintTable.add(hintCodeBlocks, conf, file, line, 0)
       inc(start, cb.high)
 
 proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
   let comments = n.comment
-
 
   if comments.len > 0:
     var start = 0
@@ -83,8 +83,9 @@ proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
     if isLowerAscii(comments[0]):
       hintTable.add(hintFirstChar, conf, n)
 
+    cleanCodeBlocks(comments, start, line, conf, n, hintTable)
+
     while start < comments.len:
-      cleanCodeBlocks(comments, start, conf, n, hintTable)
       let incr = skipUntil(comments, SpecialChars, start)
       inc(start, incr)
       if start < comments.len:
@@ -92,7 +93,8 @@ proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
         of '\n':
           inc start
           inc line
-          cleanCodeBlocks(comments, start, conf, n, hintTable)
+          # TODO optimization: more intelligent
+          cleanCodeBlocks(comments, start, line, conf, n, hintTable)
         of '`':
           if start + 1 < comments.len and comments[start+1] == '`':
             if line notin ticks:
@@ -157,6 +159,8 @@ proc prettyPrint*(infile, outfile: string, hintTable: var seq[HintState]) =
   conf.outDir = toAbsoluteDir f.dir
   var parser: Parser
   var cache = newIdentCache()
+
+  conf.options.excl(optHints)
 
   if setupParser(parser, fileIdx, cache, conf):
     var ast = parseFile(conf.projectMainIdx, cache, conf)
