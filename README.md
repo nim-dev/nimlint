@@ -6,7 +6,7 @@ Ref https://github.com/timotheecour/Nim/issues/415
 ## lint items
 - [ ] code block => runnableExamples
 - [x] proc + noSideEffect => func
-- [ ] assert in a test file => doAssert
+- [x] assert in a test file => doAssert
 - [x] isMainModule in stdlib => recommend moving to tests/stdlib/tfoo.nim
 - [ ] double backticks => single backticks
 - [ ] capitalize the first letter
@@ -17,3 +17,4 @@ Ref https://github.com/timotheecour/Nim/issues/415
 
 - [x] Better messages with filename, line and col number
 - [ ] Fix them
+- [ ] Github APP integration
