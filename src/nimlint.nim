@@ -4,7 +4,7 @@ TODO: not portable, needs instead: `requires "compiler"`
 import ../compiler/[ast, idents, msgs, syntaxes, options, pathutils]
 from ../compiler/renderer import renderTree
 
-import std/[os, strformat, strutils]
+import std/[os, strformat, strutils, parseutils]
 import std/private/miscdollars # avoids code duplication
 
 
@@ -13,7 +13,8 @@ type
     # doc comments
     hintBackticks
     hintCodeBlocks
-    hintCapitialize
+    hintFirstChar
+    hintLastChar
     # functions
     hintFunc
     hintIsMainModule
@@ -26,9 +27,10 @@ type
     info: tuple[file: string, line, col: int]
 
 const
-  hintStateKindTable: array[7, string] = ["double backticks => single backtick",
+  hintStateKindTable: array[8, string] = ["double backticks => single backtick",
       "code blocks => runnableExamples",
-      "capitalize the first letter",
+      "the first letter should be upper",
+      "the last char should not be in alphabet",
 
       "proc + noSideEffect => func",
       "isMainModule in stdlib => moving to tests/*/*.nim",
@@ -37,7 +39,7 @@ const
       "assert in tests => doAssert"
       ]
 
-assert hintStateKindTable.high == HintStateKind.high.ord
+static: doAssert hintStateKindTable.high == HintStateKind.high.ord
 
 proc initHintState(kind: HintStateKind, file: string, line, col: int): HintState =
   HintState(kind: kind, info: (file, line, col))
@@ -63,13 +65,44 @@ proc cleanWhenModule(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
     if son[0].kind == nkIdent and cmpIgnoreStyle(son[0].ident.s, "isMainModule") == 0:
       hintTable.add(hintIsMainModule, conf, n)
 
-proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
-  discard SpecialChars
-  let comments = n.comment
-  let cb = ".. code-block::"
-  for line in comments.splitLines:
-    if cmpIgnoreStyle(line.substr(0, cb.high), cb) == 0:
+proc cleanCodeBlocks(
+  comments: string, start: var int, conf: ConfigRef, n: PNode, hintTable: var seq[HintState]
+) =
+  const cb = ".. code-block::"
+  if start + cb.high < comments.len:
+    if comments.startsWith(cb):
+    # if cmpIgnoreStyle(comments.substr(start, cb.high), cb) == 0:
       hintTable.add(hintCodeBlocks, conf, n)
+      inc(start, cb.high)
+
+proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
+  let comments = n.comment
+  var start = 0
+  var line = n.info.line.int
+
+  if comments.len > 0:
+    if isLowerAscii(comments[0]):
+      hintTable.add(hintFirstChar, conf, n)
+    elif isAlphaAscii(comments[^1]):
+      hintTable.add(hintLastChar, conf, n)
+
+    while start < comments.len:
+      cleanCodeBlocks(comments, start, conf, n, hintTable)
+      let incr = skipUntil(comments, SpecialChars, start)
+      inc(start, incr)
+      if start < comments.len:
+        case comments[start]
+        of '\n':
+          inc start
+          inc line
+          cleanCodeBlocks(comments, start, conf, n, hintTable)
+        of '`':
+          if start + 1 < comments.len and comments[start+1] == '`':
+            hintTable.add(hintBackticks, conf, conf.toFullPath(n.info.fileIndex), line, 0)
+            inc start
+          inc start
+        else:
+          inc start
 
 proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState], infile: string) =
   case n.kind

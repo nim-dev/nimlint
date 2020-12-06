@@ -19,6 +19,8 @@ proc hello(a: int) {.nosideeffect.} =
 
 ## .. code-block::nim
 ##    echo 23
+## test ``double ticks``
+## 
 
 func rest = discard
 
