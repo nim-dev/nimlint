@@ -1,1 +1,1 @@
-# import nimlintpkg/nims_common
+import nimlintpkg/nims_common
