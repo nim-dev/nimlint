@@ -7,6 +7,8 @@ let x = "1234567898765432187652367489668754326789348565784932873456"
 proc hello(a: int) {.nosideeffect.} =
   ## ``Double quote`` should be removed.
   ## Test
+  ## .. code-block::
+  ##    echo 23
   runnableExamples:
     ## Hello Kitty
     assert 12 == 12
@@ -14,6 +16,9 @@ proc hello(a: int) {.nosideeffect.} =
   assert 12 == 12
   when isMainModule:
     assert 1 == 1
+
+## .. code-block::nim
+##    echo 23
 
 func rest = discard
 

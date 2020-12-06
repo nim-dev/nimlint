@@ -65,6 +65,11 @@ proc cleanWhenModule(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
 
 proc cleanComment(conf: ConfigRef, n: PNode, hintTable: var seq[HintState]) =
   discard SpecialChars
+  let comments = n.comment
+  let cb = ".. code-block::"
+  for line in comments.splitLines:
+    if cmpIgnoreStyle(line.substr(0, cb.high), cb) == 0:
+      hintTable.add(hintCodeBlocks, conf, n)
 
 proc clean(conf: ConfigRef, n: PNode, hintTable: var seq[HintState], infile: string) =
   case n.kind

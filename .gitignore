@@ -9,3 +9,4 @@ outputExpected.txt
 megatest.nim
 core.json
 *.exe
+out.nim
