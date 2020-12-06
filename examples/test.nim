@@ -1,4 +1,4 @@
 import src/nimlint
 
 
-main("examples/example.nim", "out.nim", verbose = false)
+main("examples/example2.nim", "out.nim", verbose = false)
