@@ -15,7 +15,7 @@ Ref https://github.com/timotheecour/Nim/issues/415
 ## TODO
 
 - [x] Better messages with filename, line and col number
+- [x] Github APP integration :arrow_right: https://github.com/juancarlospaco/nimlint-action
 - [ ] Fix them
-- [ ] Github APP integration
 - [ ] Syntax to ignore lint recommendations, analog to #!nimpretty off
 (maybe via a pragma or special #!nimlint:off syntax)
